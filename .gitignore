@@ -4,3 +4,7 @@ models/.DS_Store
 /__pycache__
 /models/__pycache__
 .DS_Store
+/code/.idea
+/code/__pycache__
+/code/models/__pycache__
+*.sqlite
