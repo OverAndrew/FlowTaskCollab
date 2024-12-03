@@ -11,4 +11,4 @@ if os.path.exists(file_path):
 else:
     print(f'Ошибка: файл по пути {file_path} не найден.')
     
-BOT_TOKEN = f"{token}"
+

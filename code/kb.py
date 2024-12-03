@@ -1,17 +1,15 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-# инлайн кнопки главного меню
+
 main_menu = [
     [InlineKeyboardButton(text="Проекты", callback_data="projects")],
     [InlineKeyboardButton(text="Мои задачи", callback_data="my_tasks")],
     [InlineKeyboardButton(text="Мой профиль", callback_data="my_profile")],
-    [InlineKeyboardButton(text="?", callback_data="*")]
+    [InlineKeyboardButton(text="Ассистент", callback_data="assistant")]
 ]
 main_menu = InlineKeyboardMarkup(inline_keyboard=main_menu)
-#exit_kb = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="🔙Выйти в меню")]], resize_keyboard=True)
-#iexit_kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙Выйти в меню", callback_data="menu")]])
-# инлайн кнопки моего проекта
+
 projects = [
     [InlineKeyboardButton(text="Мои проекты", callback_data="my_projects")],
     [InlineKeyboardButton(text="Вступить в проект", callback_data="find_project")],
@@ -29,7 +27,7 @@ my_project = [
     [InlineKeyboardButton(text="Главное меню", callback_data="main_menu")]
 ]
 my_project = InlineKeyboardMarkup(inline_keyboard=my_project)
-# инлайн кнопка редактирования профиля
+
 my_profile = [
     [InlineKeyboardButton(text="Редактировать профиль", callback_data="edit_profile")],
     [InlineKeyboardButton(text="Главное меню", callback_data="main_menu")]
@@ -43,6 +41,11 @@ tasks = [
     [InlineKeyboardButton(text="Главное меню", callback_data="main_menu")]
 ]
 tasks = InlineKeyboardMarkup(inline_keyboard=tasks)
+
+assistant_board = [
+    [InlineKeyboardButton(text="Завершить диалог", callback_data="close_assistant")]
+]
+assistant_board = InlineKeyboardMarkup(inline_keyboard=assistant_board)
 
 rmk = ReplyKeyboardRemove()
 
@@ -63,12 +66,10 @@ def build_keyboard(text_butt: list,
                 callback_data=str(type + "_" + str(calldata_butt[i])))) #максимум 64 байта
     # Распаковываем список с кнопками в билдер методом row c параметром width
     kb_builder.row(*buttons, width=width)
-    # Возвращаем объект инлайн-клавиатуры
+
     kb_builder.row(InlineKeyboardButton(
             text="Главное меню",
             callback_data="main_menu"
         ))
     
     return kb_builder.as_markup()
-
-# Добавить кнопку отмены.

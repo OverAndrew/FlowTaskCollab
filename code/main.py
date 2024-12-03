@@ -15,7 +15,7 @@ from aiogram.client.session.aiohttp import AiohttpSession
 
 
 async def main():
-    bot = Bot(token=config.BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))#
+    bot = Bot(token=config.token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))#
     dp = Dispatcher(storage=MemoryStorage())#Сохраняем только то, что укажем сохранять
     dp.include_router(router) #подключаем роутер
     await bot.delete_webhook(drop_pending_updates=True) #не воспринимает старые сообщения, только новые

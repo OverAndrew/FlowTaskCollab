@@ -9,7 +9,10 @@ from kb import rmk
 import re
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from db import UserDataExtractor
 
+import ollama
+from ollama import Client, AsyncClient
 
 # from typing import Dict
 
@@ -273,7 +276,7 @@ async def create_task(clbck: CallbackQuery, state: FSMContext):
     await clbck.message.answer("Введите название задания:")
     await state.set_state(Gen.edit_task_name)
 
-#  
+
 @router.message(Gen.edit_task_name)
 async def input_edit_task_name(message: Message, state: FSMContext):
     await state.update_data(task_name=message.text)  
@@ -299,3 +302,45 @@ async def input_edit_task_deadline(message: Message, state: FSMContext):
     await state.clear()
 
 
+@router.callback_query(F.data == "assistant")
+async def speak_lama(clbck: types.CallbackQuery, state: FSMContext):
+    await clbck.message.edit_text("Напишите свой вопрос ассистенту:", reply_markup=kb.assistant_board)
+    await clbck.answer()
+    await state.set_state(Gen.talk_to_assistant)
+
+
+@router.message(Gen.talk_to_assistant)
+async def chat_with_lama(message: types.Message, state: FSMContext):
+    extractor = UserDataExtractor()
+    user_message = message.text + '\n' + extractor.get_data(message.from_user.id)
+    client = AsyncClient()
+    try:
+        print(user_message)
+        response = await client.chat(
+            model="assistant", 
+            messages=[{"role": "user", "content": user_message}])
+        cleaned_response = re.sub(r'<[^>]*>', '', response['message']['content'])
+        state_data = await state.get_data()
+        if state_data.get('last_message_id'):
+            try:
+                await message.bot.edit_message_reply_markup(
+                    chat_id=message.chat.id,
+                    message_id=state_data['last_message_id'])
+            except Exception as e:
+                print(f"Ошибка при удалении клавиатуры: {e}")
+
+        new_message = await message.answer(cleaned_response, reply_markup=kb.assistant_board)
+        await state.update_data(last_message_id=new_message.message_id)
+
+    except Exception as e:
+        await message.answer(f"Ошибка при общении с Ламой: {e}", reply_markup=kb.assistant_board)
+
+
+
+@router.callback_query(F.data == "close_assistant")
+async def close_lama(clbck: types.CallbackQuery, state: FSMContext):
+    await clbck.message.delete_reply_markup()
+    await state.clear() 
+    await clbck.message.answer(text.menu.format(name=clbck.from_user.full_name), 
+                                  reply_markup=kb.main_menu)
+    await clbck.answer()
