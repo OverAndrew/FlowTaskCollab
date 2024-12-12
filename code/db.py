@@ -2,6 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models.database import User, Project, Project_team, Task, Task_team
 import random
+from visualize import show_plots
 from sqlalchemy import and_
 engine = create_engine('sqlite:///flowtaskcollab.sqlite')
 Session = sessionmaker(bind=engine)
@@ -158,11 +159,12 @@ def select(user_id: int, text: str):
             return [project.name, project.description, pt.user_project_level]
         elif choose == 'task':
             task, task_team = session.query(Task, Task_team).filter(Task.id == _id).first()
-            return [task.name, task.description, task.deadline, task_team.user_team_level]
+            return [task.name, task.description, task.deadline, task_team.user_team_level, "выполнено" if task.status == 1 else "не выполнено"]
     except Exception as e:
         return e
     finally:
         session.close()
+
         
 def get_projects_name(user_id):
     session = Session()
@@ -222,7 +224,34 @@ def get_task_list_from_user(user_id: int):
         return 'Ошибка'
     finally:
         session.close()
-        
+
+
+# Получение всех задач пользователя
+def get_all_user_tasks(input_user_id: int):
+    session = Session()
+    try:
+        tasks = session.query(Task).join(Task_team).filter(
+            Task_team.user_id == input_user_id
+        ).all()
+        tasks_info = []
+        for task in tasks:
+            task = {
+                "deadline": task.deadline,
+                "status" : task.status
+            }
+            tasks_info.append(task)
+        return tasks_info
+    except Exception as e:
+        return f'Ошибка: {str(e)}'
+    finally:
+        session.close()
+
+# Построение графиков по задачам пользователя
+def plot_message(input_user_id: int):
+    tasks = get_all_user_tasks(input_user_id)
+    return show_plots(tasks)
+
+
 # Функция добавления задания
 def add_task(name: str, description: str, deadline: str, user_id: int):
     session = Session()
@@ -241,8 +270,56 @@ def add_task(name: str, description: str, deadline: str, user_id: int):
     finally:
         session.close()
         
-        
-        
+
+# Функция удаления задачи
+def delete_choose_task(user_id: int, text: str):
+    session = Session()
+    try:
+        user_id = int(user_id)
+        choose = text.split('_')[0]
+        _id = int(text.split('_')[1])
+ 
+        if choose == 'task':
+            task_team_entry = session.query(Task_team).filter(Task_team.task_id == _id).first()
+ 
+            if task_team_entry:
+                session.delete(task_team_entry)
+                remaining_task_entries = session.query(Task_team).filter_by(task_id=_id).all()
+                if not remaining_task_entries:
+                    task = session.query(Task).filter_by(id=_id).first()
+                    if task:
+                        session.delete(task)
+                session.commit()
+                return f"Задача была удалена успешно."
+            else:
+                return f"Задачи не найдено."
+ 
+    except Exception as e:
+        session.rollback()
+        return f"Ошибка: {e}"
+ 
+    finally:
+        session.close()
+
+
+# Функция выполнения задачи
+def get_task_done(input_user_id: int, input_text: str):
+    session = Session()
+    try:
+        user_id = int(input_user_id)
+        input_task_id = int(input_text.split('_')[1])
+ 
+        user = session.query(User).filter_by(id = user_id).first()
+ 
+        task = session.query(Task).filter_by(id = input_task_id).first()
+        task.status = 1
+        session.commit()
+        return 'Задание Выполнено!'
+    except Exception as e:
+        return f"Ошибка: {e}"
+    finally:
+        session.close()
+
 class UserDataExtractor:
     def __init__(self):
         self.engine = create_engine('sqlite:///flowtaskcollab.sqlite')
@@ -251,10 +328,12 @@ class UserDataExtractor:
     def fetch_user_and_tasks(self, input_user_id):
         """Сбор данных о пользователе, проектах и задачах."""
         with self.Session() as session:
+            # Поиск пользователя и его выбранный проект
             user = session.query(User).filter(User.id == input_user_id).one_or_none()
             if not user or not user.selected_project:
                 return {"error": "Пользователь или выбранный проект не найдены."}
  
+            # Поиск пользователей, работающих над теми же задачами
             users_in_task_team = (
                 session.query(User)
                 .join(Project_team, User.id == Project_team.user_id)
@@ -263,6 +342,7 @@ class UserDataExtractor:
                 .all()
             )
  
+            # Получение информации по проектам
             projects = (
                 session.query(Project)
                 .join(Project_team, Project_team.user_id == input_user_id)
@@ -270,13 +350,15 @@ class UserDataExtractor:
                 .all()
             )
  
+            # Получение задач пользователя во всех проектах
             tasks = (
                 session.query(Task)
                 .join(Task_team, Task_team.task_id == Task.id)
                 .filter(Task_team.user_id == input_user_id)
                 .all()
             )
-
+ 
+            # Возвращаение данных для дальнейшей обработки
             return {
                 "user": user,
                 "users_in_task_team" : users_in_task_team,
@@ -330,6 +412,7 @@ class UserDataExtractor:
                 for task in tasks
             ] if tasks else "Текущих задач нет",
         }
+        # result = "" + result
         return result
  
     def get_data(self, input_user_id):

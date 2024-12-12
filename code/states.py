@@ -1,5 +1,5 @@
 from aiogram.fsm.state import StatesGroup, State
-# состояния для записи данных о пользователе
+
 class Gen(StatesGroup):
     edit_profile_name = State()
     edit_surname = State()
@@ -14,4 +14,5 @@ class Gen(StatesGroup):
     choose_task = State()
     del_project = State()
     talk_to_assistant = State()
-    
+    del_task = State()
+    choose_move_task = State()

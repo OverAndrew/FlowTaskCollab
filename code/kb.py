@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from aiogram import types
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
+# инлайн кнопки главного меню
 main_menu = [
     [InlineKeyboardButton(text="Проекты", callback_data="projects")],
     [InlineKeyboardButton(text="Мои задачи", callback_data="my_tasks")],
@@ -9,7 +9,9 @@ main_menu = [
     [InlineKeyboardButton(text="Ассистент", callback_data="assistant")]
 ]
 main_menu = InlineKeyboardMarkup(inline_keyboard=main_menu)
-
+#exit_kb = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="🔙Выйти в меню")]], resize_keyboard=True)
+#iexit_kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙Выйти в меню", callback_data="menu")]])
+# инлайн кнопки моего проекта
 projects = [
     [InlineKeyboardButton(text="Мои проекты", callback_data="my_projects")],
     [InlineKeyboardButton(text="Вступить в проект", callback_data="find_project")],
@@ -21,13 +23,14 @@ projects = InlineKeyboardMarkup(inline_keyboard=projects)
 
 my_project = [
     [InlineKeyboardButton(text="Задачи", callback_data="tasks")],
+    [InlineKeyboardButton(text="Состояние задач", callback_data="tasks_states")],
     [InlineKeyboardButton(text="Команды", callback_data="teams")],
 #    [InlineKeyboardButton(text="Настройки проекта", callback_data="settings_project")],
     [InlineKeyboardButton(text="Участники проекта", callback_data="members_project")],
     [InlineKeyboardButton(text="Главное меню", callback_data="main_menu")]
 ]
 my_project = InlineKeyboardMarkup(inline_keyboard=my_project)
-
+# инлайн кнопка редактирования профиля
 my_profile = [
     [InlineKeyboardButton(text="Редактировать профиль", callback_data="edit_profile")],
     [InlineKeyboardButton(text="Главное меню", callback_data="main_menu")]
@@ -37,10 +40,16 @@ my_profile = InlineKeyboardMarkup(inline_keyboard=my_profile)
 tasks = [
     [InlineKeyboardButton(text="Мои задачи", callback_data="my_tasks")],
     [InlineKeyboardButton(text="Добавить задачу", callback_data="add_task")],
-#    [InlineKeyboardButton(text="Удалить задачу", callback_data="del_task")],
+    [InlineKeyboardButton(text="Удалить задачу", callback_data="del_task")],
     [InlineKeyboardButton(text="Главное меню", callback_data="main_menu")]
 ]
 tasks = InlineKeyboardMarkup(inline_keyboard=tasks)
+
+task = [
+    [InlineKeyboardButton(text="Задача выполнена", callback_data="task_done")],
+    [InlineKeyboardButton(text="Выйти", callback_data="tasks")]
+]
+task = InlineKeyboardMarkup(inline_keyboard=task)
 
 assistant_board = [
     [InlineKeyboardButton(text="Завершить диалог", callback_data="close_assistant")]
@@ -66,10 +75,12 @@ def build_keyboard(text_butt: list,
                 callback_data=str(type + "_" + str(calldata_butt[i])))) #максимум 64 байта
     # Распаковываем список с кнопками в билдер методом row c параметром width
     kb_builder.row(*buttons, width=width)
-
+    # Возвращаем объект инлайн-клавиатуры
     kb_builder.row(InlineKeyboardButton(
             text="Главное меню",
             callback_data="main_menu"
         ))
     
     return kb_builder.as_markup()
+
+# Добавить кнопку отмены.
