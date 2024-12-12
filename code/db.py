@@ -412,11 +412,23 @@ class UserDataExtractor:
                 for task in tasks
             ] if tasks else "Текущих задач нет",
         }
-        # result = "" + result
         return result
  
     def get_data(self, input_user_id):
         info = self.fetch_user_and_tasks(input_user_id)
         info = self.convert_to_json(info)
         return (str(info))
+
  
+def get_key(input_user_id: int, input_project_id: int):
+    session = Session()
+    _id = int(input_project_id.split('_')[1])
+    try:
+        project, pt = session.query(Project, Project_team).join(Project_team).filter(
+            and_(Project.id == _id, Project_team.user_id == input_user_id, Project_team.user_project_level == 0)).first()
+        session.commit()
+        return project.key
+    except Exception as e:
+        return f"у вас нет доступа к ключу проекта"
+    finally:
+        session.close()

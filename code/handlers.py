@@ -166,7 +166,8 @@ async def callback_data_project(callback: CallbackQuery, state: FSMContext):
     name = f"Название:\n{back_answer_db[0]}\n"
     description = f"Описание:\n{back_answer_db[1]}\n"
     user_project_level = f"Уровень доступа:\n{back_answer_db[2]}"
-    await callback.message.edit_text(text=name+description+user_project_level,
+    project_key = f"\nКлюч доступа к проекту:\n<pre>{db.get_key(input_user_id=callback.from_user.id, input_project_id=answer)}</pre>"
+    await callback.message.edit_text(text=name+description+user_project_level+project_key,
                                   reply_markup=kb.my_project)
     await state.clear()
 
@@ -226,8 +227,8 @@ async def tasks(clbck: CallbackQuery, state: FSMContext):
     text_butt = data[0]
     calldata_butt = data[1]
     if len(text_butt) < 1:
-        if clbck.message.text != "У вас нет задач, chill out":
-            await clbck.message.edit_text("У вас нет задач, chill out", 
+        if clbck.message.text != "У вас нет задач, можно отдохнуть":
+            await clbck.message.edit_text("У вас нет задач, можно отдохнуть", 
                                         reply_markup=clbck.message.reply_markup)
         else:
             await clbck.answer(text="Создайте задачу!")
@@ -275,8 +276,8 @@ async def tasks(clbck: CallbackQuery, state: FSMContext):
     text_butt = data[0]
     calldata_butt = data[1]
     if len(text_butt) < 1:
-        if clbck.message.text != "У вас нет задач, chill out":
-            await clbck.message.edit_text("У вас нет задач, chill out", 
+        if clbck.message.text != "У вас нет задач, можно отдохнуть":
+            await clbck.message.edit_text("У вас нет задач, можно отдохнуть", 
                                         reply_markup=clbck.message.reply_markup)
         else:
             await clbck.answer(text="У вас нет задач!")
@@ -355,7 +356,7 @@ async def input_edit_task_deadline(callback_query: CallbackQuery, callback_data:
 @router.callback_query(F.data == "assistant")
 async def speak_lama(clbck: types.CallbackQuery, state: FSMContext):
     # Сообщение пользователю о подключении
-    await clbck.message.edit_text("Напишите свой вопрос Ламе:", reply_markup=kb.assistant_board)
+    await clbck.message.edit_text("Напишите свой вопрос ассистенту:", reply_markup=kb.assistant_board)
     await clbck.answer()
     await state.set_state(Gen.talk_to_assistant)
 
@@ -376,7 +377,6 @@ async def chat_with_lama(message: types.Message, state: FSMContext):
 
         cleaned_response = re.sub(r'<[^>]*>', '', response['message']['content'])  # Удаляем HTML теги, могут мешать отправке сообщения в ТГ
 
-        # Получаем данные состояния с использованием await
         state_data = await state.get_data()
 
         # Если это не первое сообщение, удаляем клавиатуру с предыдущего ответа
@@ -400,7 +400,7 @@ async def chat_with_lama(message: types.Message, state: FSMContext):
         await message.answer(f"Ошибка при общении с ассистентом: {e}", reply_markup=kb.assistant_board)
 
 
-# Обработчик нажатия кнопки "Закрыть связь с Ламой"
+# Обработчик нажатия кнопки "Закрыть связь с ассистентом"
 @router.callback_query(F.data == "close_assistant")
 async def close_lama(clbck: types.CallbackQuery, state: FSMContext):
     await clbck.message.delete_reply_markup()
