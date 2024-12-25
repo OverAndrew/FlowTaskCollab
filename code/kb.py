@@ -23,7 +23,6 @@ my_project = [
     [InlineKeyboardButton(text="Задачи", callback_data="tasks")],
     [InlineKeyboardButton(text="Состояние задач", callback_data="tasks_states")],
     [InlineKeyboardButton(text="Команды", callback_data="teams")],
-#    [InlineKeyboardButton(text="Настройки проекта", callback_data="settings_project")],
     [InlineKeyboardButton(text="Участники проекта", callback_data="members_project")],
     [InlineKeyboardButton(text="Главное меню", callback_data="main_menu")]
 ]

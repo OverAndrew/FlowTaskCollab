@@ -185,13 +185,12 @@ async def input_del_key_project(msg: Message, state: FSMContext):
         text = db.delete_project(user_id=msg.from_user.id, key=prompt)
         await msg.answer(text=text, reply_markup=kb.main_menu)
         await state.clear()
-        
+
 # Участники проекта
 @router.callback_query(F.data == "members_project")
 async def my_projects(clbck: CallbackQuery, state: FSMContext):
-    data = db.get_project_members(user_id=clbck.from_user.id)
-    check = len(data[0])
-    if check < 1:
+    data = db.get_project_members(input_user_id=clbck.from_user.id)
+    if data == "Участники не найдены":
         if clbck.message.text != "Участников не найдено":
             await clbck.message.answer("Участников не найдено", 
                                     reply_markup=clbck.message.reply_markup)
@@ -218,7 +217,22 @@ async def send_tasks_status(clbck: CallbackQuery, state: FSMContext):
 async def projects(clbck: CallbackQuery, state: FSMContext):
     await clbck.message.edit_text(text="Вот что вам доступно", reply_markup=kb.tasks)
 
-
+# Команды проекта
+@router.callback_query(F.data == "teams")
+async def teams_project(clbck: CallbackQuery):
+    data = db.get_project_teams(user_id=clbck.from_user.id)
+    if data == "Команды не найдены":
+        if clbck.message.text != "Команды не найдены":
+            await clbck.message.answer("Команды не найдены", 
+                                    reply_markup=clbck.message.reply_markup)
+        else:
+            await clbck.answer(text="Создайте задание с командой")
+    else:
+        if clbck.message.text != data:
+            await clbck.message.edit_text(data, reply_markup=kb.my_project)
+        else:
+            await clbck.answer("Список команд уже выведен!")
+            
 # Вывод моих задач
 @router.callback_query(F.data == "my_tasks")
 async def tasks(clbck: CallbackQuery, state: FSMContext):

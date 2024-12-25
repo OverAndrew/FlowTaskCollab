@@ -184,11 +184,15 @@ def get_projects_name(user_id):
 
 
 # Функция получения состава проекта
-def get_project_members(user_id: int):
+def get_project_members(input_user_id: int):
     session = Session()
     try:
-        selected_project = session.query(User).filter_by(id = user_id).first().selected_project
+        selected_project = session.query(User).filter_by(id = input_user_id).first().selected_project
         users = session.query(User, Project_team).join(Project_team).filter(Project_team.project_id == selected_project).all()
+
+        if not users or not selected_project:
+            return "Участники не найдены"
+
         res = 'Участники проекта:\n'
         for el in users:
             us = el[0]
@@ -206,6 +210,7 @@ def get_project_members(user_id: int):
         return 'Ошибка'
     finally:
         session.close()
+
         
 # Функция получения списка заданий по id проекту
 def get_task_list_from_user(user_id: int):
