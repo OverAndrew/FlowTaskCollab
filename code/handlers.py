@@ -206,6 +206,9 @@ async def my_projects(clbck: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "tasks_states")
 async def send_tasks_status(clbck: CallbackQuery, state: FSMContext):
     buf = db.plot_message(clbck.from_user.id)  # BytesIO объект
+    if buf == "Ошибка":
+        await clbck.message.answer(text="У вас нет задач", reply_markup=kb.my_project)
+        return
     photo = BufferedInputFile(buf.getvalue(), filename="plot.png")
     await clbck.message.answer_photo(photo=photo)
     await clbck.answer()
@@ -220,7 +223,7 @@ async def projects(clbck: CallbackQuery, state: FSMContext):
 # Команды проекта
 @router.callback_query(F.data == "teams")
 async def teams_project(clbck: CallbackQuery):
-    data = db.get_project_teams(user_id=clbck.from_user.id)
+    data = db.get_project_teams_members(input_user_id=clbck.from_user.id)
     if data == "Команды не найдены":
         if clbck.message.text != "Команды не найдены":
             await clbck.message.answer("Команды не найдены", 

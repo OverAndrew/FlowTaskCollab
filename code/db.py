@@ -211,6 +211,39 @@ def get_project_members(input_user_id: int):
     finally:
         session.close()
 
+
+# Функция получения команд
+def get_project_teams_members(input_user_id: int):
+    session = Session()
+    try:
+        selected_project = session.query(User).filter_by(id = input_user_id).first().selected_project
+        
+        task_teams = (
+            session.query(Task.name, User.username)
+            .join(Task_team, Task.id == Task_team.task_id)
+            .join(User, Task_team.user_id == User.id)
+            .filter(Task.project_id == selected_project)
+            .all()
+        )
+        if not task_teams:
+            return "Команды не найдены"
+        tasks_with_users = {}
+        for task_name, username in task_teams:
+            tasks_with_users.setdefault(task_name, []).append(username)
+        res= []
+        for task_name, users in tasks_with_users.items():
+            res.append(
+                f"--------------------------------\n"
+                f"Название задачи:\n{task_name}\n"
+                f"Состав команды:\n" +
+                "\n".join(f" - @{user}" for user in users)
+            )
+        return "\n".join(res)
+    except Exception as e:
+        return str(e)
+    finally:
+        session.close()
+
         
 # Функция получения списка заданий по id проекту
 def get_task_list_from_user(user_id: int):
@@ -253,8 +286,16 @@ def get_all_user_tasks(input_user_id: int):
 
 # Построение графиков по задачам пользователя
 def plot_message(input_user_id: int):
-    tasks = get_all_user_tasks(input_user_id)
-    return show_plots(tasks)
+    try:
+        tasks = get_all_user_tasks(input_user_id)
+        if not tasks:
+            return "Ошибка"
+        res = show_plots(tasks)
+        return res
+    except Exception as e:
+        return "Ошибка"
+
+
 
 
 # Функция добавления задания
