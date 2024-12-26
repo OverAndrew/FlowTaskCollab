@@ -9,7 +9,7 @@ from aiogram.fsm.context import FSMContext
 import re
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from cruds import user, project, task
+from CRUDs import user, project, task
 
 
 import ollama
