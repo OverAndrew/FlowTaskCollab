@@ -8,3 +8,4 @@ models/.DS_Store
 /code/__pycache__
 /code/models/__pycache__
 *.sqlite
+.idea/

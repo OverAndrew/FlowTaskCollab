@@ -9,7 +9,8 @@ from aiogram.fsm.context import FSMContext
 import re
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from db import UserDataExtractor
+from cruds import user, project, task
+
 
 import ollama
 from ollama import AsyncClient
@@ -21,7 +22,6 @@ from aiogram_calendar import SimpleCalendarCallback, SimpleCalendar, get_user_lo
 from aiogram.filters.callback_data import CallbackData
 
 from states import Gen
-import db
 import kb
 import text
 
@@ -33,9 +33,9 @@ Session = sessionmaker(bind=engine)
 @router.message(Command("start"))
 async def subscribe(message: types.Message):
     if len(message.from_user.username) > 1:
-        db.user_init(_id=message.from_user.id, username=message.from_user.username)
+        user.user_init(_id=message.from_user.id, username=message.from_user.username)
     else:
-        db.user_init(_id=message.from_user.id, username=None)
+        user.user_init(_id=message.from_user.id, username=None)
     await message.answer(text.greet.format(name=message.from_user.full_name), reply_markup=kb.main_menu)
 
 
@@ -59,7 +59,7 @@ async def main_menu(clbck: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "my_profile")
 async def input_weight(clbck: CallbackQuery, state: FSMContext):
     await clbck.message.edit_text(
-    text=str(db.get_user_data(clbck.from_user.id)),
+    text=str(user.get_user_data(clbck.from_user.id)),
     reply_markup=kb.my_profile)
     
 # Нажатие кнопки "Редактировать профиль"
@@ -85,8 +85,8 @@ async def input_edit_profile_name(message: Message, state: FSMContext):
 
     name = user_data['profile_name']
     surname = user_data['profile_surname']
-    db.user_init(message.from_user.id, name=name, surname=surname)
-    await message.answer(text=db.get_user_data(message.from_user.id), reply_markup=kb.main_menu)
+    user.user_init(message.from_user.id, name=name, surname=surname)
+    await message.answer(text=user.get_user_data(message.from_user.id), reply_markup=kb.main_menu)
     await state.clear()  
 
 # Меню "Проекты"
@@ -119,8 +119,7 @@ async def input_edit_project_description(message: Message, state: FSMContext):
 
     name = user_data['project_name']
     description = user_data['project_description']
-    text = db.create_project(creator_id=message.from_user.id, name=name, description=description)
-
+    text = project.create_project(creator_id=message.from_user.id, name=name, description=description)
     await message.answer(text=text[0]+f"\nКод доступа к проекту:\n<pre>{text[1]}</pre>",
                          reply_markup=kb.main_menu)
     await state.clear()  
@@ -136,7 +135,7 @@ async def find_project(clbck: CallbackQuery, state: FSMContext):
 async def input_key_project(msg: Message, state: FSMContext):
     if msg.text.isdigit():
         prompt = msg.text
-        await msg.answer(db.join_project(user_id=msg.from_user.id, key=prompt), reply_markup=kb.projects)
+        await msg.answer(project.join_project(user_id=msg.from_user.id, key=prompt), reply_markup=kb.projects)
         await state.clear()
     else:
         await msg.answer(text.error_input)
@@ -145,7 +144,7 @@ async def input_key_project(msg: Message, state: FSMContext):
 @router.callback_query(F.data == "my_projects")
 async def my_projects(clbck: CallbackQuery, state: FSMContext):
     type = "project"
-    data = db.get_projects_name(user_id=clbck.from_user.id)
+    data = project.get_projects_name(user_id=clbck.from_user.id)
     text_butt = data[0]
     calldata_butt = data[1]
     if len(text_butt) < 1:
@@ -162,11 +161,11 @@ async def my_projects(clbck: CallbackQuery, state: FSMContext):
 @router.callback_query(Gen.choose_project)
 async def callback_data_project(callback: CallbackQuery, state: FSMContext):
     answer = str(callback.data)
-    back_answer_db = db.select(user_id=callback.from_user.id, text=answer) 
+    back_answer_db = project.select(user_id=callback.from_user.id, text=answer)
     name = f"Название:\n{back_answer_db[0]}\n"
     description = f"Описание:\n{back_answer_db[1]}\n"
     user_project_level = f"Уровень доступа:\n{back_answer_db[2]}"
-    project_key = f"\nКлюч доступа к проекту:\n<pre>{db.get_key(input_user_id=callback.from_user.id, input_project_id=answer)}</pre>"
+    project_key = f"\nКлюч доступа к проекту:\n<pre>{project.get_key(input_user_id=callback.from_user.id, input_project_id=answer)}</pre>"
     await callback.message.edit_text(text=name+description+user_project_level+project_key,
                                   reply_markup=kb.my_project)
     await state.clear()
@@ -182,14 +181,14 @@ async def del_project(clbck: CallbackQuery, state: FSMContext):
 async def input_del_key_project(msg: Message, state: FSMContext):
     prompt = msg.text
     if prompt.isdigit():
-        text = db.delete_project(user_id=msg.from_user.id, key=prompt)
+        text = project.delete_project(user_id=msg.from_user.id, key=prompt)
         await msg.answer(text=text, reply_markup=kb.main_menu)
         await state.clear()
 
 # Участники проекта
 @router.callback_query(F.data == "members_project")
 async def my_projects(clbck: CallbackQuery, state: FSMContext):
-    data = db.get_project_members(input_user_id=clbck.from_user.id)
+    data = project.get_project_members(input_user_id=clbck.from_user.id)
     if data == "Участники не найдены":
         if clbck.message.text != "Участников не найдено":
             await clbck.message.answer("Участников не найдено", 
@@ -205,7 +204,7 @@ async def my_projects(clbck: CallbackQuery, state: FSMContext):
 # Отправка состояния всех задач пользователя в проекте
 @router.callback_query(F.data == "tasks_states")
 async def send_tasks_status(clbck: CallbackQuery, state: FSMContext):
-    buf = db.plot_message(clbck.from_user.id)  # BytesIO объект
+    buf = task.plot_message(clbck.from_user.id)  # BytesIO объект
     if buf == "Ошибка":
         await clbck.message.answer(text="У вас нет задач", reply_markup=kb.my_project)
         return
@@ -215,7 +214,7 @@ async def send_tasks_status(clbck: CallbackQuery, state: FSMContext):
     await clbck.message.answer('Визуализация состояния задач', reply_markup=kb.my_project)
     
 
-# Меню "Задания"
+# Меню "Задачи"
 @router.callback_query(F.data == "tasks")
 async def projects(clbck: CallbackQuery, state: FSMContext):
     await clbck.message.edit_text(text="Вот что вам доступно", reply_markup=kb.tasks)
@@ -223,13 +222,13 @@ async def projects(clbck: CallbackQuery, state: FSMContext):
 # Команды проекта
 @router.callback_query(F.data == "teams")
 async def teams_project(clbck: CallbackQuery):
-    data = db.get_project_teams_members(input_user_id=clbck.from_user.id)
+    data = task.get_project_teams_members(input_user_id=clbck.from_user.id)
     if data == "Команды не найдены":
         if clbck.message.text != "Команды не найдены":
             await clbck.message.answer("Команды не найдены", 
                                     reply_markup=clbck.message.reply_markup)
         else:
-            await clbck.answer(text="Создайте задание с командой")
+            await clbck.answer(text="Создайте задачу с командой")
     else:
         if clbck.message.text != data:
             await clbck.message.edit_text(data, reply_markup=kb.my_project)
@@ -240,7 +239,7 @@ async def teams_project(clbck: CallbackQuery):
 @router.callback_query(F.data == "my_tasks")
 async def tasks(clbck: CallbackQuery, state: FSMContext):
     type = "task"
-    data = db.get_task_list_from_user(user_id=clbck.from_user.id)
+    data = task.get_task_list_from_user(user_id=clbck.from_user.id)
     text_butt = data[0]
     calldata_butt = data[1]
     if len(text_butt) < 1:
@@ -252,13 +251,13 @@ async def tasks(clbck: CallbackQuery, state: FSMContext):
     else:
         keyboard=kb.build_keyboard(text_butt=text_butt, calldata_butt=calldata_butt, type=type, width=2)
         await state.set_state(Gen.choose_task)
-        await clbck.message.edit_text("Доступные задания", reply_markup=keyboard)
+        await clbck.message.edit_text("Доступные задачи", reply_markup=keyboard)
 
 
 @router.callback_query(Gen.choose_task)
 async def callback_data_task(callback: CallbackQuery, state: FSMContext):
     answer = str(callback.data)
-    back_answer_db = db.select(user_id=callback.from_user.id, text=answer)
+    back_answer_db = project.select(user_id=callback.from_user.id, text=answer)
     move = "Информация о задаче:\n"
     name = f"Название:\n{back_answer_db[0]}\n"
     description = f"Описание:\n{back_answer_db[1]}\n"
@@ -279,7 +278,7 @@ async def callback_data_choose_move_task(callback: CallbackQuery, state: FSMCont
     if answer == "task_done":
         user_data = await state.get_data()
         task_id_answer = user_data['task_id']
-        back_answer_db = db.get_task_done(input_user_id=callback.from_user.id, input_text=task_id_answer) 
+        back_answer_db = task.get_task_done(input_user_id=callback.from_user.id, input_text=task_id_answer)
         await callback.message.edit_text(text=back_answer_db,
                                     reply_markup=kb.my_project)
         await state.clear()
@@ -289,7 +288,7 @@ async def callback_data_choose_move_task(callback: CallbackQuery, state: FSMCont
 @router.callback_query(F.data == "del_task")
 async def tasks(clbck: CallbackQuery, state: FSMContext):
     type = "task"
-    data = db.get_task_list_from_user(user_id=clbck.from_user.id)
+    data = task.get_task_list_from_user(user_id=clbck.from_user.id)
     text_butt = data[0]
     calldata_butt = data[1]
     if len(text_butt) < 1:
@@ -306,14 +305,14 @@ async def tasks(clbck: CallbackQuery, state: FSMContext):
 @router.callback_query(Gen.del_task)
 async def callback_data_task(callback: CallbackQuery, state: FSMContext):
     answer = str(callback.data)
-    back_answer_db = db.delete_choose_task(user_id=callback.from_user.id, text=answer) 
+    back_answer_db = task.delete_choose_task(user_id=callback.from_user.id, text=answer)
     await callback.message.edit_text(text=back_answer_db,
                                   reply_markup=kb.my_project)
     await state.clear()
     
 
 
-# Нажатие кнопки "Добавить задание"
+# Нажатие кнопки "Добавить задачу"
 @router.callback_query(F.data == "add_task")
 async def create_task(clbck: CallbackQuery, state: FSMContext):
     await clbck.message.delete()
@@ -344,7 +343,7 @@ async def input_edit_task_deadline(callback_query: CallbackQuery, callback_data:
         name = user_data['task_name']
         description = user_data['task_description']
         deadline = datetime.today().strftime("%d/%m/%Y")
-        text = db.add_task(name=name, description=description, deadline=deadline, user_id=callback_query.from_user.id)
+        text = task.add_task(name=name, description=description, deadline=deadline, user_id=callback_query.from_user.id)
         await callback_query.message.edit_text(text=text, reply_markup=kb.my_project)
         await state.clear()
         return
@@ -363,7 +362,7 @@ async def input_edit_task_deadline(callback_query: CallbackQuery, callback_data:
         name = user_data['task_name']
         description = user_data['task_description']
         deadline = date.strftime("%d/%m/%Y")
-    text = db.add_task(name=name, description=description, deadline=deadline, user_id=callback_query.from_user.id)
+    text = task.add_task(name=name, description=description, deadline=deadline, user_id=callback_query.from_user.id)
     await callback_query.message.answer(text=text, reply_markup=kb.my_project)
     await state.clear()
 
@@ -380,7 +379,7 @@ async def speak_lama(clbck: types.CallbackQuery, state: FSMContext):
 
 @router.message(Gen.talk_to_assistant)
 async def chat_with_lama(message: types.Message, state: FSMContext):
-    extractor = UserDataExtractor()
+    extractor = user.UserDataExtractor()
     user_message = message.text + '\n' + extractor.get_data(message.from_user.id)
     # Используем клиент Ollama для общения с моделью
     client = AsyncClient()
@@ -388,7 +387,7 @@ async def chat_with_lama(message: types.Message, state: FSMContext):
     try:
         print(user_message)
         response = await client.chat(
-            model="test_1",  # модель
+            model="assistant",  # модель
             messages=[{"role": "user", "content": user_message}]  # Формируем сообщения
         )
 

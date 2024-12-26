@@ -1,7 +1,7 @@
 import os
 
-from models.database import DATABASE_NAME
-from models.database import create_db
+from database import DATABASE_NAME
+from database import create_db
 
 if __name__ == '__main__':
     db_is_created = os.path.exists(DATABASE_NAME)

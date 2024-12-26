@@ -1,77 +1,93 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey, create_engine, Boolean
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from typing import List, Optional
+from sqlalchemy import String, Integer, Boolean, ForeignKey
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine
 
 DATABASE_NAME = 'flowtaskcollab.sqlite'
 
 engine = create_engine(f'sqlite:///{DATABASE_NAME}')
-Session = sessionmaker(bind = engine)
+Session = sessionmaker(bind=engine)
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 class User(Base):
-    __tablename__ = 'user'
+    __tablename__ = "user"
 
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-    surname = Column(String)
-    username = Column(String)
-    selected_project = Column(Integer, ForeignKey('project.id'))
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    surname: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    username: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    selected_project: Mapped[Optional[int]] = mapped_column(ForeignKey("project.id"), nullable=True)
 
-    project_team = relationship("Project_team", back_populates='user')
-    team = relationship('Task_team', back_populates='user')
-    project = relationship('Project', back_populates='user')
+    project_team: Mapped[List["Project_team"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    team: Mapped[List["Task_team"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    project: Mapped[Optional["Project"]] = relationship(back_populates="users")
+
 
 
 class Project_team(Base):
-    __tablename__ = 'project_team'
+    __tablename__ = "project_team"
 
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('user.id'))
-    project_id = Column(Integer, ForeignKey('project.id'))
-    user_project_level = Column(Integer)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("user.id"), nullable=True)
+    project_id: Mapped[Optional[int]] = mapped_column(ForeignKey("project.id"), nullable=True)
+    user_project_level: Mapped[Optional[int]] = mapped_column(nullable=True)
 
-    user = relationship("User", back_populates="project_team")
-    project = relationship("Project", back_populates="project_teams")
+    user: Mapped["User"] = relationship(back_populates="project_team")
+    project: Mapped["Project"] = relationship(back_populates="project_teams")
+
 
 class Task_team(Base):
-    __tablename__ = 'task_team'
+    __tablename__ = "task_team"
 
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('user.id'))
-    user_team_level = Column(Integer)
-    task_id = Column(Integer, ForeignKey('task.id'))
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("user.id"), nullable=True)
+    user_team_level: Mapped[Optional[int]] = mapped_column(nullable=True)
+    task_id: Mapped[Optional[int]] = mapped_column(ForeignKey("task.id"), nullable=True)
 
-    user = relationship("User", back_populates="team")
-    tasks = relationship('Task', back_populates='team')
+    user: Mapped["User"] = relationship(back_populates="team")
+    tasks: Mapped["Task"] = relationship(back_populates="team")
+
 
 class Task(Base):
-    __tablename__ = 'task'
+    __tablename__ = "task"
 
-    id = Column(Integer, primary_key=True)
-    project_id = Column(Integer, ForeignKey('project.id'))
-    deadline = Column(String)
-    # team_id = Column(Integer, ForeignKey('task_team.id'))
-    priority = Column(Integer)
-    description = Column(String)
-    status = Column(Boolean)
-    name = Column(String)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    project_id: Mapped[Optional[int]] = mapped_column(ForeignKey("project.id"), nullable=True)
+    deadline: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    priority: Mapped[Optional[int]] = mapped_column(nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    status: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    name: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
-    project = relationship("Project", back_populates="tasks")
-    team = relationship("Task_team", back_populates="tasks", cascade="all, delete-orphan")
+    project: Mapped["Project"] = relationship(back_populates="tasks")
+    team: Mapped[List["Task_team"]] = relationship(
+        back_populates="tasks", cascade="all, delete-orphan"
+    )
+
 
 class Project(Base):
-    __tablename__ = 'project'
+    __tablename__ = "project"
 
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
-    description = Column(String)
-    key = Column(Integer)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    description: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    key: Mapped[Optional[int]] = mapped_column(nullable=True)
 
-    project_teams = relationship("Project_team", back_populates="project", cascade='all, delete-orphan')
-    tasks = relationship("Task", back_populates="project", cascade="all, delete-orphan")
-    user = relationship('User', back_populates='project')
+    project_teams: Mapped[List["Project_team"]] = relationship(
+        back_populates="project", cascade="all, delete-orphan"
+    )
+    tasks: Mapped[List["Task"]] = relationship(
+        back_populates="project", cascade="all, delete-orphan"
+    )
+    users: Mapped[List["User"]] = relationship(back_populates="project")
+
 
 def create_db():
     Base.metadata.create_all(engine)
