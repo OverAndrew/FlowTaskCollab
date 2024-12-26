@@ -28,12 +28,17 @@ def show_plots(user_tasks):
         monthly_tasks = df[df['month'] == current_month]
         daily_summary = monthly_tasks.groupby(['day', 'status_label']).size().unstack(fill_value=0)
 
+        if (df['status'].nunique() == 1) and (df['status'].iloc[0] == 0):
+            colors = ['#FF4C4C', '#FF4C4C']
+        else:
+            colors = ['#4CAF50', '#FF4C4C']
+
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
 
         days_in_month = pd.Period(current_month).days_in_month
         daily_summary = daily_summary.reindex(range(1, days_in_month + 1), fill_value=0)
 
-        daily_summary.plot(kind='bar', stacked=True, ax=ax1, color=['#4CAF50', '#FF4C4C'], alpha=0.7)
+        daily_summary.plot(kind='bar', stacked=True, ax=ax1, color=colors, alpha=0.7)
         ax1.set_title(f'Состояние задач за текущий месяц ({get_month(current_month)})')
         ax1.set_xlabel('Число')
         ax1.set_xticklabels(range(1, days_in_month + 1), rotation=45)
@@ -43,7 +48,7 @@ def show_plots(user_tasks):
         ax1.set_ylim(0, daily_summary.values.max() + 5)
         ax1.yaxis.set_major_locator(MaxNLocator(integer=True))
 
-        yearly_summary.plot(kind='bar', stacked=True, ax=ax2, color=['#4CAF50', '#FF4C4C'], alpha=0.7)
+        yearly_summary.plot(kind='bar', stacked=True, ax=ax2, color=colors, alpha=0.7)
         ax2.set_title('Состояние задач по месяцам')
         ax2.set_xlabel('Месяц')
         ax2.set_ylabel('Количество задач')
